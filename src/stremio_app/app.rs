@@ -1,6 +1,7 @@
 use native_windows_derive::NwgUi;
 use native_windows_gui as nwg;
 use rand::Rng;
+use serde::Deserialize;
 use serde_json;
 use std::{
     cell::RefCell,
@@ -29,6 +30,12 @@ use crate::stremio_app::{
 
 use super::stremio_server::StremioServer;
 
+#[derive(Default, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Settings {
+    pub quit_on_close: bool,
+}
+
 #[derive(Default, NwgUi)]
 pub struct MainWindow {
     pub command: String,
@@ -41,6 +48,7 @@ pub struct MainWindow {
     pub release_candidate: bool,
     pub autoupdater_setup_file: Arc<Mutex<Option<PathBuf>>>,
     pub saved_window_style: RefCell<WindowStyle>,
+    pub settings: Arc<Mutex<Settings>>,
     #[nwg_resource]
     pub embed: nwg::EmbedResource,
     #[nwg_resource(source_embed: Some(&data.embed), source_embed_str: Some("MAINICON"))]
@@ -223,6 +231,8 @@ impl MainWindow {
         let hide_splash_sender = self.hide_splash_notice.sender();
         let focus_sender = self.focus_notice.sender();
         let autoupdater_setup_mutex = self.autoupdater_setup_file.clone();
+        let app_settings = self.settings.clone();
+
         thread::spawn(move || loop {
             if let Some(msg) = web_rx
                 .recv()
@@ -248,6 +258,18 @@ impl MainWindow {
                         let command_ref = command_clone.clone();
                         if !command_ref.is_empty() {
                             web_tx_web.send(RPCResponse::open_media(command_ref)).ok();
+                        }
+                    }
+                    Some("update_settings") => {
+                        if let Some(arg) = msg.get_params() {
+                            match serde_json::from_value::<Settings>(arg.to_owned()) {
+                                Ok(settings) => {
+                                    let mut app_settings = app_settings.lock().unwrap();
+                                    *app_settings = settings;
+                                    println!("App settings updated.");
+                                }
+                                Err(e) => eprintln!("Failed to deserialize settings object: {e}"),
+                            }
                         }
                     }
                     Some("app-error") => {
@@ -396,8 +418,14 @@ impl MainWindow {
         if let nwg::EventData::OnWindowClose(data) = data {
             data.close(false);
         }
-        self.window.set_visible(false);
-        self.tray.tray_show_hide.set_checked(self.window.visible());
-        self.transmit_window_full_screen_change(false, false);
+
+        let settings = self.settings.lock().unwrap();
+        if settings.quit_on_close {
+            self.quit_notice.sender().notice();
+        } else {
+            self.window.set_visible(false);
+            self.tray.tray_show_hide.set_checked(self.window.visible());
+            self.transmit_window_full_screen_change(false, false);
+        }
     }
 }
