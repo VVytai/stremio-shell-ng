@@ -260,7 +260,7 @@ impl MainWindow {
                             web_tx_web.send(RPCResponse::open_media(command_ref)).ok();
                         }
                     }
-                    Some("update_settings") => {
+                    Some("update-settings") => {
                         if let Some(arg) = msg.get_params() {
                             match serde_json::from_value::<Settings>(arg.to_owned()) {
                                 Ok(settings) => {
