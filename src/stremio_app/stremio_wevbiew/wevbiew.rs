@@ -103,6 +103,7 @@ impl PartialUi for WebView {
                     settings.put_is_built_in_error_page_enabled(false).ok();
                     settings.put_are_host_objects_allowed(false).ok();
                     settings.put_are_default_script_dialogs_enabled(false).ok();
+                    settings.put_are_default_context_menus_enabled(false).ok();
 
                     // Handle window.open and href
                     webview.add_new_window_requested(move |_webview, event| {
@@ -154,16 +155,6 @@ impl PartialUi for WebView {
 
                         webview.add_content_loading(move |wv, _| {
                             wv.execute_script(r##"
-                            try{
-                                /* Disable context menus */
-                                document.addEventListener('contextmenu', (e) => {
-                                    if(!(e.target.tagName == "INPUT" &&
-                                    ['text', 'password', 'number', 'week', 'month', 'email'].includes(e.target.type.toLowerCase()))) {
-                                        e.stopPropagation();e.preventDefault()
-                                    }
-                                    })
-                            }catch(e){}
-
                             try{console.log('Shell JS injected');if(window.self === window.top) {
                                 window.qt={webChannelTransport:{send:window.chrome.webview.postMessage}};
                                 window.chrome.webview.addEventListener('message',ev=>window.qt.webChannelTransport.onmessage(ev));
