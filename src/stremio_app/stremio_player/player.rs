@@ -229,16 +229,6 @@ fn create_message_thread(
                     set_property(name, value, &mpv);
                 }
                 InMsg(InMsgFn::MpvSetProp, InMsgArgs::StProp(name, PropVal::Str(value))) => {
-                    let value = if name.to_string() == "vo" {
-                        let mut value = value;
-                        if !value.is_empty() && !value.ends_with(',') {
-                            value.push(',');
-                        }
-                        value.push_str("gpu-next,");
-                        value
-                    } else {
-                        value
-                    };
                     set_property(name, value, &mpv);
                 }
                 InMsg(InMsgFn::MpvCommand, InMsgArgs::Cmd(cmd)) => {
